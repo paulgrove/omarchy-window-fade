@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
   "id": "pgrove.window-fade",
-  "name": "Window Fade",
-  "version": "1.4.0",
+  "name": "Window Fade for OLED",
+  "version": "1.4.1",
   "author": "Paul Grove",
-  "description": "Dim, desaturate, or fade unfocused windows with per-display settings and exclusions.",
+  "description": "Help reduce OLED burn-in risk by dimming unfocused windows. At the 50% brightness setting, pure SDR sRGB white falls to about 21% of its original luminance before blending.",
   "kinds": ["service", "bar-widget"],
   "entryPoints": {
     "service": "extension/Service.qml",
     "barWidget": "extension/Widget.qml"
   },
   "barWidget": {
-    "displayName": "Window Fade",
+    "displayName": "Window Fade for OLED",
     "description": "Configure how unfocused windows fade on each display.",
     "category": "System",
     "defaultSection": "right",

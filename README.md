@@ -1,7 +1,19 @@
-# Window Fade for Omarchy
+# Window Fade for OLED
 
-Gradually dim, desaturate, or fade unfocused windows. Set a different profile
-for each display and exclude individual windows or whole apps.
+Help reduce OLED burn-in risk by dimming bright, static content in unfocused
+windows. Window Fade for Omarchy lets you set brightness, saturation, and
+transparency per display and exclude individual windows or whole apps.
+
+At the **50% brightness** setting, pure white in **SDR sRGB** falls to about
+**21% of its original luminance** before blending. The shader halves the encoded
+RGB values, and the sRGB transfer curve maps that midpoint to about 0.214 in
+linear light. Actual screen luminance depends on the display and its settings.
+[W3C sRGB specification](https://www.w3.org/TR/css-color/#predefined-sRGB)
+
+Lowering the brightness of static content can reduce burn-in risk. In RTINGS’
+accelerated OLED test, the display showing the same content at maximum
+brightness developed more severe burn-in than the display set to 200 nits.
+[RTINGS real-life OLED burn-in test](https://www.rtings.com/tv/learn/real-life-oled-burn-in-test)
 
 ## Requirements
 
