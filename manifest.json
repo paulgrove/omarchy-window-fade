@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "pgrove.window-fade",
+  "name": "Window Fade",
+  "version": "1.4.0",
+  "author": "Paul Grove",
+  "description": "Dim, desaturate, or fade unfocused windows with per-display settings and exclusions.",
+  "kinds": ["service", "bar-widget"],
+  "entryPoints": {
+    "service": "extension/Service.qml",
+    "barWidget": "extension/Widget.qml"
+  },
+  "barWidget": {
+    "displayName": "Window Fade",
+    "description": "Configure how unfocused windows fade on each display.",
+    "category": "System",
+    "defaultSection": "right",
+    "allowMultiple": false
+  }
+}

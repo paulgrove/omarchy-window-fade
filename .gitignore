@@ -1,0 +1,4 @@
+/HyprWindowShade.so
+/engine/HyprWindowShade.so
+/.build-engine.*
+/hyprwindowshade-unfocus-delay.patch
