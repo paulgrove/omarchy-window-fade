@@ -15,6 +15,8 @@ accelerated OLED test, the display showing the same content at maximum
 brightness developed more severe burn-in than the display set to 200 nits.
 [RTINGS real-life OLED burn-in test](https://www.rtings.com/tv/learn/real-life-oled-burn-in-test)
 
+![Window Fade settings with inactive brightness set to 50%](preview.png)
+
 ## Requirements
 
 - Omarchy Quattro with **Hyprland 0.57.2**, commit
