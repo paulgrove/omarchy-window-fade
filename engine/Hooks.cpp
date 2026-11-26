@@ -7,6 +7,7 @@
 #include <hyprland/src/workspace/HLWorkspace.hpp>
 #include <hyprutils/utils/ScopeGuard.hpp>
 #include <string_view>
+#include <hyprland/protocols/wlr-layer-shell-unstable-v1.hpp>
 
 #include <cstdio>
 
@@ -1450,7 +1451,13 @@ void hkGLDrawTex(void* thisptr, Render::CRenderContext& ctx, Hyprutils::Memory::
         // effect until its delay expires. The wakeup timer starts the redraw.
         if (waiting)
             nPaths = std::remove_if(stack, stack + nPaths, [&](const auto* path) { return *path == *animPath; }) - stack;
-        else if (animPath)
+        if (!pWindow && pLS && !g_wallpaperProfiles.empty() &&
+            pLS->m_layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND &&
+            (pLS->m_namespace == "owe-background" || pLS->m_namespace == "omarchy-background")) {
+            if (auto monitor = ctx.m_data.pMonitor.lock(); monitor && g_wallpaperProfiles.contains(monitor->name()))
+                stack[nPaths++] = &g_wallpaperShader;
+        }
+        if (!waiting && animPath)
             stack[nPaths++] = animPath;
     }
 
@@ -1646,6 +1653,14 @@ Hyprutils::Memory::CWeakPointer<CShader> hkUseShader(CHyprOpenGLImpl* thisptr, H
     // Inject uniforms using cached locations (no per-frame glGetUniformLocation).
     if (activeEntry) {
         PHLWINDOW contextWindow = g_pCurrentRenderWindow.lock();
+        if (activeEntry->wallpaperAdjustmentsLoc >= 0) {
+            WallpaperProfile profile{1.0f, 1.0f};
+            if (auto monitor = g_pCurrentRenderCtx->m_data.pMonitor.lock()) {
+                if (const auto it = g_wallpaperProfiles.find(monitor->name()); it != g_wallpaperProfiles.end())
+                    profile = it->second;
+            }
+            glUniform2f(activeEntry->wallpaperAdjustmentsLoc, profile.brightness, profile.saturation);
+        }
         if (activeEntry->timeLoc >= 0) {
             const float t = std::chrono::duration_cast<std::chrono::duration<float>>(
                                 std::chrono::steady_clock::now() - g_pluginStartTime)

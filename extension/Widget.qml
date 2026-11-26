@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
+import "." as Local
 
 Panel {
   id: root
@@ -12,8 +13,8 @@ Panel {
   implicitWidth: icon.implicitWidth
   implicitHeight: icon.implicitHeight
 
-  readonly property var service: bar && bar.shell
-    ? bar.shell.serviceFor(moduleName) : null
+  readonly property var service: (bar && bar.shell ? bar.shell.serviceFor(moduleName) : null)
+    || Local.WindowFadeServiceState.current
   readonly property var display: QsWindow.window ? QsWindow.window.screen : null
   readonly property string screenName: display ? display.name : ""
   readonly property var monitor: display ? Hyprland.monitorFor(display) : null
@@ -37,11 +38,14 @@ Panel {
   readonly property int saturation: boundedSetting("saturation", 60, 100, 1)
   readonly property int brightness: boundedSetting("brightness", 75, 100, 1)
   readonly property int transparency: boundedSetting("transparency", 0, 100, 1)
+  readonly property int wallpaperBrightness: boundedSetting("wallpaperBrightness", 100, 100, 1)
+  readonly property int wallpaperSaturation: boundedSetting("wallpaperSaturation", 100, 100, 1)
   readonly property bool saveFailed: !!service && service.profileSaveFailed
   readonly property bool applyFailed: !!service && service.failed
   readonly property string applyMessage: service && service.applyMessage || "applyFailed"
   readonly property color panelForeground: Commons.Color.popups.text
   property bool showingExclusions: false
+  property bool showingWallpaper: false
   property string exclusionMode: "windows"
   readonly property var displayClients: {
     if (!service || !showingExclusions || !monitor)
@@ -73,6 +77,10 @@ Panel {
     { label: "saturation", key: "saturation", max: 100, timing: false },
     { label: "brightness", key: "brightness", max: 100, timing: false },
     { label: "transparency", key: "transparency", max: 100, timing: false }
+  ]
+  readonly property var wallpaperSliderSpecs: [
+    { label: "wallpaperBrightness", key: "wallpaperBrightness", max: 100, timing: false },
+    { label: "wallpaperSaturation", key: "wallpaperSaturation", max: 100, timing: false }
   ]
 
   function profileSetting(key, fallback) {
@@ -113,7 +121,12 @@ Panel {
       service.refreshClients()
     }
   }
-  onOpenedChanged: if (!opened) showingExclusions = false
+  onOpenedChanged: {
+    if (!opened) {
+      showingExclusions = false
+      showingWallpaper = false
+    }
+  }
 
   Connections {
     target: Hyprland
@@ -176,6 +189,8 @@ Panel {
     if (key === "fadeMs") return duration
     if (key === "saturation") return saturation
     if (key === "brightness") return brightness
+    if (key === "wallpaperBrightness") return wallpaperBrightness
+    if (key === "wallpaperSaturation") return wallpaperSaturation
     return transparency
   }
 
@@ -219,6 +234,8 @@ Panel {
       onCloseRequested: {
         if (root.showingExclusions)
           root.showingExclusions = false
+        else if (root.showingWallpaper)
+          root.showingWallpaper = false
         else
           root.close()
       }
@@ -234,6 +251,8 @@ Panel {
         }
       }
       onActivateRequested: {
+        if (root.showingWallpaper)
+          return
         if (!root.showingExclusions)
           root.showingExclusions = true
         else if (exclusionList.currentItem && exclusionList.currentItem.enabled)
@@ -247,6 +266,7 @@ Panel {
         spacing: Style.spacing.md
 
         Toggle {
+          visible: !root.showingWallpaper
           width: parent.width
           label: strings.t("title")
           description: root.display && root.display.model
@@ -257,14 +277,32 @@ Panel {
         }
 
         Button {
+          visible: !root.showingWallpaper
           width: parent.width
           bordered: true
           text: strings.t("exclusions")
           onClicked: root.showingExclusions = true
         }
 
+        Button {
+          width: parent.width
+          bordered: true
+          text: strings.t(root.showingWallpaper ? "back" : "wallpaper")
+          onClicked: root.showingWallpaper = !root.showingWallpaper
+        }
+
+        Text {
+          visible: root.showingWallpaper
+          width: parent.width
+          textFormat: Text.PlainText
+          text: strings.t("wallpaperForScreen").arg(root.screenName)
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+          color: root.panelForeground
+        }
+
         Repeater {
-          model: root.sliderSpecs
+          model: root.showingWallpaper ? root.wallpaperSliderSpecs : root.sliderSpecs
           delegate: Column {
             id: timing
             required property var modelData

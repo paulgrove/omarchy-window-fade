@@ -404,6 +404,7 @@ struct CompiledShader {
     GLint     curveLoc         = -1; // float: eased fraction (may exceed 1 on a spring)
     GLint     durationLoc      = -1; // float: seconds, -1 when the curve has none
     GLint     settleLoc        = -1; // float 0..1 across the post-motion tail
+    GLint     wallpaperAdjustmentsLoc = -1; // vec2: brightness, saturation
     GLint     releaseVelLoc    = -1; // vec2: velocity frozen at the instant motion ended
     GLint     peakVelLoc       = -1; // vec2: fastest velocity reached during the gesture
     GLint     peakSizeVelLoc   = -1; // vec2: fastest resize rate reached during the gesture
@@ -451,6 +452,13 @@ struct CompiledShader {
 inline constexpr const char* LAYER_CATCH_ALL = "*";
 
 extern std::map<std::string, std::string>          g_mLayerNamespaceShaderMap;
+struct WallpaperProfile {
+    float brightness;
+    float saturation;
+    bool operator==(const WallpaperProfile&) const = default;
+};
+extern std::map<std::string, WallpaperProfile, std::less<>> g_wallpaperProfiles;
+extern std::string g_wallpaperShader;
 extern std::map<std::string, std::string>          g_mWindowClassShaderMap;
 
 // Layer surfaces (bars, notifications, rofi/wofi) have no rule tags in v0.56, so

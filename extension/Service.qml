@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import "." as Local
 
 Item {
   id: root
@@ -207,7 +208,14 @@ Item {
     }
   }
 
-  Component.onCompleted: applyDelay.restart()
+  Component.onCompleted: {
+    Local.WindowFadeServiceState.current = root
+    applyDelay.restart()
+  }
   // After removal, reconcile against the persisted layout once the shell has saved it.
-  Component.onDestruction: Quickshell.execDetached(["bash", root.helper, "--settle"])
+  Component.onDestruction: {
+    if (Local.WindowFadeServiceState.current === root)
+      Local.WindowFadeServiceState.current = null
+    Quickshell.execDetached(["bash", root.helper, "--settle"])
+  }
 }

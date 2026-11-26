@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "pgrove.window-fade",
   "name": "Window Fade for OLED",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "author": "Paul Grove",
   "description": "Help reduce OLED burn-in risk by dimming unfocused windows. At the 50% brightness setting, pure SDR sRGB white falls to about 21% of its original luminance before blending.",
   "kinds": ["service", "bar-widget"],
@@ -12,7 +12,7 @@
   },
   "barWidget": {
     "displayName": "Window Fade for OLED",
-    "description": "Configure how unfocused windows fade on each display.",
+    "description": "Adjust unfocused windows and wallpaper on each display.",
     "category": "System",
     "defaultSection": "right",
     "allowMultiple": false

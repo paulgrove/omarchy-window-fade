@@ -42,7 +42,11 @@ local function set_enabled(rules, enabled)
   end
 end
 
-return function(shader_dir, active_screens)
+return function(shader_dir, active_screens, wallpaper_shader, wallpapers)
+  if wallpapers then
+    hl.plugin.HyprWindowShade.wallpaperprofiles(wallpaper_shader, wallpapers)
+  end
+
   -- Hyprland discards these handles on config reload.
   _G.omarchy_window_fade_profiles = _G.omarchy_window_fade_profiles or {}
   local by_screen = _G.omarchy_window_fade_profiles

@@ -3,6 +3,7 @@
 // Hyprland (v0.57) links liblua.so.5.5 and /usr/include/lua.h is 5.5; symbols
 // resolve from the host process at dlopen, so we don't link -llua ourselves.
 #include <lua.hpp>
+#include <cmath>
 
 // --- DEFINE EXTERN VARIABLES ---
 HANDLE                                                PHANDLE = nullptr;
@@ -10,6 +11,8 @@ std::vector<CHyprSignalListener>                      g_Listeners;
 std::unordered_map<Desktop::View::CWindow*, std::string>        g_mWindowManualShaders;
 std::unordered_map<Desktop::View::CWindow*, WindowShaderState>  g_mWindowRuleShaders;
 std::map<std::string, std::string>                    g_mLayerNamespaceShaderMap;
+std::map<std::string, WallpaperProfile, std::less<>>  g_wallpaperProfiles;
+std::string                                          g_wallpaperShader;
 std::map<std::string, std::string>                    g_mWindowClassShaderMap;
 std::map<std::string, CompiledShader>                 g_mCompiledCShaders;
 std::map<std::string, time_t>                         g_mFailedShaderMtimes;
@@ -148,6 +151,47 @@ static int luaLayerShader(lua_State* L) {
     const char* a = luaL_checkstring(L, 1);
     const char* b = luaL_checkstring(L, 2);
     shadeActions::setLayerShader(a, b);
+    return 0;
+}
+
+static int luaWallpaperProfiles(lua_State* L) {
+    const char* shader = luaL_checkstring(L, 1);
+    luaL_checktype(L, 2, LUA_TTABLE);
+
+    decltype(g_wallpaperProfiles) next;
+    lua_pushnil(L);
+    while (lua_next(L, 2) != 0) {
+        if (lua_type(L, -2) == LUA_TSTRING && lua_istable(L, -1)) {
+            lua_rawgeti(L, -1, 1);
+            lua_rawgeti(L, -2, 2);
+            int hasBrightness = 0, hasSaturation = 0;
+            const double brightness = lua_tonumberx(L, -2, &hasBrightness);
+            const double saturation = lua_tonumberx(L, -1, &hasSaturation);
+            lua_pop(L, 2);
+            if (hasBrightness && hasSaturation && std::isfinite(brightness) && std::isfinite(saturation) &&
+                brightness >= 0 && brightness <= 1 && saturation >= 0 && saturation <= 1 &&
+                (brightness != 1 || saturation != 1))
+                next.emplace(lua_tostring(L, -2), WallpaperProfile{static_cast<float>(brightness), static_cast<float>(saturation)});
+        }
+        lua_pop(L, 1);
+    }
+
+    const bool shaderChanged = g_wallpaperShader != shader;
+    if (!shaderChanged && g_wallpaperProfiles == next)
+        return 0;
+
+    g_wallpaperShader = shader;
+    g_wallpaperProfiles.swap(next);
+    for (const auto& monitor : State::monitorState()->monitors()) {
+        if (!monitor)
+            continue;
+        const auto previous = next.find(monitor->name());
+        const auto current = g_wallpaperProfiles.find(monitor->name());
+        const bool wasAdjusted = previous != next.end();
+        const bool isAdjusted = current != g_wallpaperProfiles.end();
+        if (wasAdjusted != isAdjusted || (isAdjusted && (shaderChanged || previous->second != current->second)))
+            g_pHyprRenderer->damageMonitor(monitor);
+    }
     return 0;
 }
 static int luaToggleLayerShader(lua_State* L) {
@@ -466,6 +510,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     // Removed automatically on plugin unload (per PluginAPI.hpp), but PLUGIN_EXIT
     // calls removeLuaFunction defensively to keep teardown symmetric.
     HyprlandAPI::addLuaFunction(PHANDLE, "HyprWindowShade", "layershader",        &luaLayerShader);
+    HyprlandAPI::addLuaFunction(PHANDLE, "HyprWindowShade", "wallpaperprofiles",  &luaWallpaperProfiles);
     HyprlandAPI::addLuaFunction(PHANDLE, "HyprWindowShade", "togglelayershader",  &luaToggleLayerShader);
     HyprlandAPI::addLuaFunction(PHANDLE, "HyprWindowShade", "togglewindowshader", &luaToggleWindowShader);
     HyprlandAPI::addLuaFunction(PHANDLE, "HyprWindowShade", "classshader",        &luaClassShader);
@@ -476,7 +521,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     const bool supportsOpacity = WindowFadeOpacity::install(PHANDLE);
     return {"HyprWindowShade", "Native CShader Injection (v0.57)", "ManofJELLO",
-            supportsOpacity ? "window-fade-delay-3" : "window-fade-delay-2"};
+            supportsOpacity ? "window-fade-wallpaper-1" : "window-fade-delay-2"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
@@ -486,6 +531,8 @@ APICALL EXPORT void PLUGIN_EXIT() {
     g_mWindowManualShaders.clear();
     g_mWindowRuleShaders.clear();
     g_mLayerNamespaceShaderMap.clear();
+    g_wallpaperProfiles.clear();
+    g_wallpaperShader.clear();
     g_mWindowClassShaderMap.clear();
     g_mFailedShaderMtimes.clear();
     g_mDurationWarnedMtimes.clear();
@@ -529,6 +576,7 @@ APICALL EXPORT void PLUGIN_EXIT() {
     if (g_pArrangeLayersHook)         HyprlandAPI::removeFunctionHook(PHANDLE, g_pArrangeLayersHook);
 
     HyprlandAPI::removeLuaFunction(PHANDLE, "HyprWindowShade", "layershader");
+    HyprlandAPI::removeLuaFunction(PHANDLE, "HyprWindowShade", "wallpaperprofiles");
     HyprlandAPI::removeLuaFunction(PHANDLE, "HyprWindowShade", "togglelayershader");
     HyprlandAPI::removeLuaFunction(PHANDLE, "HyprWindowShade", "togglewindowshader");
     HyprlandAPI::removeLuaFunction(PHANDLE, "HyprWindowShade", "classshader");

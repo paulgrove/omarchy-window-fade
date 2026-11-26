@@ -7,7 +7,7 @@ config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy"
 config_file="$config_dir/shell.json"
 profiles_file="$config_dir/window-fade-profiles.json"
 engine="$project_dir/HyprWindowShade.so"
-engine_version=window-fade-delay-3
+engine_version=window-fade-wallpaper-1
 id=pgrove.window-fade
 
 if [[ ${1:-} == --settle ]]; then
@@ -19,10 +19,11 @@ exec 9>"$runtime_dir/sync.lock"
 flock -w 5 9
 
 apply_rules() {
-  local lua_file lua_shader_dir result
+  local lua_file lua_shader_dir lua_wallpaper_shader result
   lua_file=$(jq -n --arg path "$project_dir/window-fade.lua" '$path')
   lua_shader_dir=$(jq -n --arg path "$runtime_dir" '$path')
-  result=$(hyprctl eval "dofile($lua_file)($lua_shader_dir, {$1})")
+  lua_wallpaper_shader=$(jq -n --arg path "$project_dir/wallpaper.glsl" '$path')
+  result=$(hyprctl eval "dofile($lua_file)($lua_shader_dir, {$1}, $lua_wallpaper_shader, ${2:-nil})")
   if [[ "$result" != ok ]]; then
     printf '%s\n' "$result" >&2
     return 1
@@ -30,14 +31,16 @@ apply_rules() {
 }
 
 if [[ ${1:-} == --stop ]]; then
-  apply_rules ""
   plugins=$(hyprctl plugin list)
   if [[ "$plugins" == *"Plugin HyprWindowShade by "* && "$plugins" == *"Version: $engine_version"* ]]; then
+    apply_rules "" '{}'
     result=$(hyprctl plugin unload "$engine")
     if [[ "$result" != ok ]]; then
       printf '%s\n' "$result" >&2
       exit 1
     fi
+  else
+    apply_rules ""
   fi
   exit 0
 fi
@@ -64,7 +67,10 @@ settings=$(jq -ec --arg id "$id" --argjson monitors "$monitors" --argjson overri
      fadeMs: (.fadeMs | bounded(0; 5000; 2000; 250)),
      saturation: (.saturation | bounded(0; 100; 60; 1)),
      brightness: (.brightness | bounded(0; 100; 75; 1)),
-     transparency: (.transparency | bounded(0; 100; 0; 1))};
+     transparency: (.transparency | bounded(0; 100; 0; 1)),
+     wallpaperBrightness: (.wallpaperBrightness | bounded(0; 100; 100; 1)),
+     wallpaperSaturation: (.wallpaperSaturation | bounded(0; 100; 100; 1))}
+    | .wallpaperAdjusted = ($available and (.wallpaperBrightness != 100 or .wallpaperSaturation != 100));
   ([.bar.layout[]?[]?, .plugins[]?]
     | map(if type == "string" then {id: .} else . end)
     | map(select(type == "object" and .id == $id))
@@ -78,14 +84,14 @@ settings=$(jq -ec --arg id "$id" --argjson monitors "$monitors" --argjson overri
        | profile($available))}]
   | {enabled: any(.[]; .value.enabled), screens: from_entries}' <<< "$config")
 
-if jq -e .enabled >/dev/null <<< "$settings"; then
+plugins=$(hyprctl plugin list)
+if jq -e '.enabled or any(.screens[]; .wallpaperAdjusted)' >/dev/null <<< "$settings"; then
   supported_commit=$(<"$project_dir/engine/hyprland-commit")
   commit=$(hyprctl -j version | jq -er .commit)
   if [[ "$commit" != "$supported_commit" ]]; then
     printf '%s\n' "Window Fade requires Hyprland commit $supported_commit." >&2
     exit 78
   fi
-  plugins=$(hyprctl plugin list)
   if [[ "$plugins" != *"Plugin HyprWindowShade by "* ]]; then
     if [[ ! -r "$engine" ]]; then
       printf '%s\n' 'Window Fade engine is missing. Run build-engine.sh before enabling the plugin.' >&2
@@ -139,5 +145,12 @@ active_screens=$(jq -r '.screens | to_entries
   | map(select(.value.enabled) | (.value) as $profile
       | "[\(.key | @json)]={excluded_apps={\($profile.excludedApps | map(@json) | join(","))},opacity=\(1 - $profile.transparency / 100),seconds=\($profile.fadeMs / 1000)}")
   | join(",")' <<< "$settings")
-apply_rules "$active_screens"
+wallpaper_screens=nil
+if [[ "$plugins" == *"Plugin HyprWindowShade by "* && "$plugins" == *"Version: $engine_version"* ]]; then
+  wallpaper_screens=$(jq -r '.screens | to_entries
+    | map(select(.value.wallpaperAdjusted)
+      | "[\(.key | @json)]={\(.value.wallpaperBrightness / 100),\(.value.wallpaperSaturation / 100)}")
+    | "{" + join(",") + "}"' <<< "$settings")
+fi
+apply_rules "$active_screens" "$wallpaper_screens"
 printf '%s\n' "$settings"

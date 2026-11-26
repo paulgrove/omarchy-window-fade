@@ -337,6 +337,7 @@ CompiledShader* getOrCompileShader(const std::string& shaderPath) {
     entry.curveLoc         = glGetUniformLocation(prog, "curve");
     entry.durationLoc      = glGetUniformLocation(prog, "duration");
     entry.settleLoc        = glGetUniformLocation(prog, "settle");
+    entry.wallpaperAdjustmentsLoc = glGetUniformLocation(prog, "window_fade_wallpaper_adjustments");
     entry.releaseVelLoc    = glGetUniformLocation(prog, "release_velocity");
     entry.peakVelLoc       = glGetUniformLocation(prog, "peak_velocity");
     entry.peakSizeVelLoc   = glGetUniformLocation(prog, "peak_size_velocity");

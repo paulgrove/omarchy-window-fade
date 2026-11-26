@@ -71,10 +71,19 @@ The defaults are a one-second delay, a two-second fade, 60% saturation,
 75% brightness, and 0% extra transparency. Fullscreen and Steam Proton
 windows are excluded. Brightness scales the window's RGB values.
 
+Choose **Wallpaper** in the same panel to adjust brightness and saturation on
+that display. This works with Omarchy's still wallpaper and OWE's image and
+video wallpaper layers. Both controls default to 100%. Zero brightness is
+black and zero saturation is grayscale. Wallpaper settings also apply when
+window fading is off.
+
 Profiles are saved by display connector in
 `${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/window-fade-profiles.json` and restored
 when displays reconnect. Run `omarchy-shell windowfade status` to see the
 applied profiles.
+
+If upgrading from an earlier build, rebuild the engine with `build-engine.sh`
+and restart Hyprland to load the new engine.
 
 ## Remove
 
